@@ -13,9 +13,10 @@ intents.message_content = True
 lore = discord.Client(intents=intents)
 loreAI = OpenAI()
 memory = {}
+useCount = {}
 
 def return_message(prompt, author, memoryDict):
-	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician (i.e., webmaster), Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. As of November 2023, the Bureauceats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack). The Administrators of Conworlds are: T0oxi22 (real name Toxi), Andy Irons (real name Andy), and WorldMaker18 (real name Liam). The following Discord user sent you a prompt:" + author  + "(END USERNAME); Here is a Python dictionary entry containing the messages that the user messaging you has sent you so far: " + memoryDict[author]  + "(END MESSAGE HISTORY); You have been given the following prompt to complete in 150 words or less, if you cannot complete a request: (DO NOT mention that it is because you are an AI) AND (do your best to fulfil the request as literally as possible). Be concise with your answer and don't be too flowery: " + prompt + " (END PROMPT)"
+	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. As of November 2023, the Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND LEAD THE WIKI). The Administrators of Conworlds are: T0oxi22 (real name Toxi), Andy Irons (real name Andy), and WorldMaker18 (real name Liam). The following Discord user sent you a prompt:" + author  + "(END USERNAME); Here is a Python dictionary entry containing the messages that the user messaging you has sent you so far: " + memoryDict[author]  + "(END MESSAGE HISTORY); You have been given the following prompt to complete in 150 words or less, if you cannot complete a request: (DO NOT mention that it is because you are an AI) AND (do your best to fulfil the request as literally as possible). Be concise with your answer and don't be too flowery: " + prompt + " (END PROMPT)"
 	messages = [{"role": "system", "content": appended_prompt}]
 	response = loreAI.chat.completions.create(
 		model='gpt-3.5-turbo-1106',
@@ -53,7 +54,38 @@ async def on_message(message):
 			await message.reply(returnMessage)
 			await lore_thinking.delete()
 		else:
-			await message.reply("I'm sorry, but you do not have the required role to perform this command (Administrator or Patron).")
+			if message.author.name in useCount:
+				if message.author.name in memory and useCount[message.author.name] <= 15:
+					retain = memory[message.author.name]
+					concatenate = retain + "(END); NEXT MESSAGE FROM USER: " + message.content
+					useCount[message.author.name] = useCount[message.author.name] + 1
+					lore_thinking = await message.channel.send("Thinking...")
+					returnMessage = return_message(message.content, message.author.name, memory)
+					await message.reply(returnMessage)
+					await lore_thinking.delete()
+				elif useCount[message.author.name] > 15:
+					await message.reply("I am sorry, but you have reached your maximum usage for today. Please wait until midnight UTC for your use count to reset.")
+				elif message.author.name not in memory and useCount[message.author.name] <= 15:
+					memory[message.author.name] = "FIRST MESSAGE FROM USER: " + message.content
+					lore_thinking = await message.channel.send("Thinking...")
+					returnMessage = return_message(message.content, message.author.name, memory)
+					await message.reply(returnMessage)
+					await lore_thinking.delete()
+			elif message.author.name not in useCount:
+					useCount[message.author.name] = 1
+					if message.author.name in memory:
+						retain = memory[message.author.name]
+						concatenate = retain + "(END); NEXT MESSAGE FROM USER: " + message.content
+						lore_thinking = await message.channel.send("Thinking...")
+						returnMessage = return_message(message.content, message.author.name, memory)
+						await message.reply(returnMessage)
+						await lore_thinking.delete()
+					else:
+						memory[message.author.name] = "FIRST MESSAGE FROM USER: " + message.content
+						lore_thinking = await message.channel.send("Thinking...")
+						returnMessage = return_message(message.content, message.author.name, memory)
+						await message.reply(returnMessage)
+						await lore_thinking.delete()
 	if message.content.startswith("$helplore"):
 		returnMessage = "At the moment, my only commands are '$lore', '$helplore', and '$wipelore'. Just use '$lore' at the beginning of your message and then ask me anything! Use '$wipelore' to clear my conversation history with you."
 		await message.reply(returnMessage)
