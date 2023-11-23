@@ -15,14 +15,17 @@ loreAI = OpenAI()
 memory = {}
 
 def return_message(prompt, author, memoryDict):
-	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician (i.e., webmaster), Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. As of November 2023, the Administrators of Conworlds are: Centrist16 (real name Justin), Fizzyflapjack (real name Jack), T0oxi22 (real name Toxi), Andy Irons (real name Andy), and WorldMaker18 (real name Liam). The following Discord user sent you a prompt:" + author  + "(END USERNAME); Here is a Python dictionary entry containing the messages that the user messaging you has sent you so far: " + memoryDict[author]  + "(END MESSAGE HISTORY); You have been given the following prompt to complete in 150 words or less. If you cannot complete a request: (do not mention that it is because you are an AI AND do your best to fulfil the request as literally as possible) OR (tell the user that you cannot complete the request and tell them to reach out to one of the aforementioned Administrators). Be concise with your answer and don't be too flowery: (you can ignore '$lore', that just triggers the Discord bot that you interact with users through) " + prompt + " (END PROMPT)"
+	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician (i.e., webmaster), Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. As of November 2023, the Bureauceats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack). The Administrators of Conworlds are: T0oxi22 (real name Toxi), Andy Irons (real name Andy), and WorldMaker18 (real name Liam). The following Discord user sent you a prompt:" + author  + "(END USERNAME); Here is a Python dictionary entry containing the messages that the user messaging you has sent you so far: " + memoryDict[author]  + "(END MESSAGE HISTORY); You have been given the following prompt to complete in 150 words or less, if you cannot complete a request: (DO NOT mention that it is because you are an AI) AND (do your best to fulfil the request as literally as possible). Be concise with your answer and don't be too flowery: " + prompt + " (END PROMPT)"
 	messages = [{"role": "system", "content": appended_prompt}]
 	response = loreAI.chat.completions.create(
 		model='gpt-3.5-turbo-1106',
 		messages=messages,
 		max_tokens=2000,
 	)
-	return response.choices[0].message.content
+	statementOut = response.choices[0].message.content
+	retainMemory = memory[author]
+	memory[author] = retainMemory + "(END); YOUR RESPONSE: " + statementOut
+	return statementOut
 
 @lore.event
 async def on_ready():
@@ -42,9 +45,9 @@ async def on_message(message):
 		if "Administrator" in roleNameList or "Patron" in roleNameList:
 			if message.author.name in memory:
 				retain = memory[message.author.name]
-				concatenate = retain + "NEXT MESSAGE: " + message.content
+				concatenate = retain + "(END); NEXT MESSAGE FROM USER: " + message.content
 			else:
-				memory[message.author.name] = "FIRST MESSAGE: " + message.content
+				memory[message.author.name] = "FIRST MESSAGE FROM USER: " + message.content
 			lore_thinking = await message.channel.send("Thinking...")
 			returnMessage = return_message(message.content, message.author.name, memory)
 			await message.reply(returnMessage)
