@@ -101,9 +101,12 @@ async def on_message(message):
 		for role in roleList:
 			roleNameList.append(role.name)
 		if "Administrator" in roleNameList:
-			memory = {}
-			useCount = {}
-			await message.reply("Memory and use counter purged!")
+			if len(memory) != 0:
+				memory = {}
+				await message.channel.send("All memories purged!")
+			if len(useCount) != 0:
+				useCount = {}
+				await message.channel.send("User counter purged!")
 		else:
 			await message.reply("I'm sorry, but only Administrators can use this command")
 
