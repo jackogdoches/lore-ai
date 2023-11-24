@@ -16,7 +16,7 @@ memory = {}
 useCount = {}
 
 def return_message(prompt, author, memoryDict):
-	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. As of November 2023, the Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND LEAD THE WIKI). The Administrators of Conworlds are: T0oxi22 (real name Toxi), Andy Irons (real name Andy), and WorldMaker18 (real name Liam). The following Discord user sent you a prompt:" + author  + "(END USERNAME); Here is a Python dictionary entry containing the messages that the user messaging you has sent you so far: " + memoryDict[author]  + "(END MESSAGE HISTORY); You have been given the following prompt to complete in 150 words or less, if you cannot complete a request: (DO NOT mention that it is because you are an AI) AND (do your best to fulfil the request as literally as possible). Be concise with your answer and don't be too flowery: " + prompt + " (END PROMPT)"
+	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. As of November 2023, the Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND LEAD THE WIKI). The Administrators of Conworlds are: T0oxi22 (real name Toxi), Andy Irons (real name Andy), and WorldMaker18 (real name Liam). The following Discord user sent you a prompt:" + author  + "(END USERNAME); Here is a Python dictionary entry containing the messages that the user messaging you has sent you so far: " + memoryDict[author]  + "(END MESSAGE HISTORY); You have been given the following prompt to complete in 200 words or less, do your best to fulfil the request as literally as possible. Be concise with your answer and don't be too flowery: " + prompt + " (END PROMPT)"
 	messages = [{"role": "system", "content": appended_prompt}]
 	response = loreAI.chat.completions.create(
 		model='gpt-3.5-turbo-1106',
@@ -95,5 +95,16 @@ async def on_message(message):
 			await message.reply("I have wiped my conversation history with " + message.author.name)
 		else:
 			await message.reply("There is nothing for me to wipe!")
+	if message.content.startswith("$purgelore"):
+		roleList = message.author.roles
+		roleNameList = []
+		for role in roleList:
+			roleNameList.append(role.name)
+		if "Administrator" in roleNameList:
+			memory = {}
+			useCount = {}
+			await message.reply("Memory and use counter purged!")
+		else:
+			await message.reply("I'm sorry, but only Administrators can use this command")
 
 lore.run(DISCORD_TOKEN)
