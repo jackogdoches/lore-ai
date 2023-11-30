@@ -16,7 +16,7 @@ loreAI = OpenAI()
 memory = {}
 useCount = {}
 
-def fetch_page(pageTitle, apiURL):
+def fetch_page(pageTitle, apiURL, author, memoryDict):
 	params = {
 		'action': 'query',
 		'format': 'json',
@@ -30,13 +30,25 @@ def fetch_page(pageTitle, apiURL):
 	pages = data.get('query', {}).get('pages', {})
 	page = next(iter(pages.values()))
 	content = page.get('extract', '')
-	return content
+	appendedPrompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to read a page. Here is the text content of that page: " + content + " (END PAGE CONTENT); Provide a brief summary in less than 1500 characters."
+	messages = [{"role": "system", "content": appendedPrompt}]
+	response = loreAI.chat.completions.create(
+		model='gpt-4-1106-preview',
+		messages=messages,
+	)
+	chatCompletion = response.choices[0].message.content
+	if author in memory:
+		retainMemory = memory[author]
+		memory[author] = retainMemory + " (END); THE FOLLOWING MESSAGE SENT BY YOU (LORE) IS A SUMMARY OF THE PAGE TITLED " + pageTitle + ": " + chatCompletion
+	else:
+		memory[author] = "THE FIRST MESSAGE FROM " + author + " WAS A REQUEST TO READ THE WIKI PAGE TITLED " + pageTitle + ", HERE IS THE SUMMARY YOU WROTE: " + chatCompletion
+	return chatCompletion
 
 def return_message(prompt, author, memoryDict):
 	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. As of November 2023, the Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND LEAD THE WIKI). The Administrators of Conworlds are: T0oxi22 (real name Toxi), Andy Irons (real name Andy), and WorldMaker18 (real name Liam). The following Discord user sent you a prompt:" + author  + "(END USERNAME); Here is a Python dictionary entry containing the messages that the user messaging you has sent you so far: " + memoryDict[author]  + "(END MESSAGE HISTORY); You have been given the following prompt to complete in 200 words or less, do your best to fulfil the request as literally as possible. Be concise with your answer and don't be too flowery: " + prompt + " (END PROMPT)"
 	messages = [{"role": "system", "content": appended_prompt}]
 	response = loreAI.chat.completions.create(
-		model='gpt-3.5-turbo-1106',
+		model='gpt-4-1106-preview',
 		messages=messages,
 		max_tokens=2000,
 	)
@@ -131,12 +143,11 @@ async def on_message(message):
 		roleNameList = []
 		for role in roleList:
 			roleNameList.append(role.name)
-		if "Administrator" in roleNameList:
-			pageTitle = message.content[len("$readwiki "):].strip()
-			apiURL = 'https://wiki.conworld.org/api.php'
-			pageContent = fetch_page(pageTitle, apiURL)
-			await message.reply(pageContent[:2000])
-		else:
-			await message.reply("At the moment, this command is experimental and limited only to Administrators.")
+		lore_thinking = await message.channel.send("Thinking...")
+		pageTitle = message.content[len("$readwiki "):].strip()
+		apiURL = 'https://wiki.conworld.org/api.php'
+		pageRead = fetch_page(pageTitle, apiURL, message.author.name, memory)
+		await message.reply(pageRead)
+		await lore_thinking.delete()
 
 lore.run(DISCORD_TOKEN)
