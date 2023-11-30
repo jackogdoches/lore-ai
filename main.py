@@ -135,8 +135,8 @@ async def on_message(message):
 			pageTitle = message.content[len("$readwiki "):].strip()
 			apiURL = 'https://wiki.conworld.org/api.php'
 			pageContent = fetch_page(pageTitle, apiURL)
-			await message.reply(page_content[:2000])
+			await message.reply(pageContent[:2000])
 		else:
-			await message.reply("At the moment, this command is experimental and limited only to Administrators."
+			await message.reply("At the moment, this command is experimental and limited only to Administrators.")
 
 lore.run(DISCORD_TOKEN)
