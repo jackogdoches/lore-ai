@@ -2,6 +2,7 @@ import discord
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+import requests
 
 load_dotenv()
 
@@ -14,6 +15,22 @@ lore = discord.Client(intents=intents)
 loreAI = OpenAI()
 memory = {}
 useCount = {}
+
+def fetch_page(pageTitle, apiURL):
+	params = {
+		'action': 'query',
+		'format': 'json',
+		'titles': pageTitle,
+		'prop': 'extracts',
+		'exintro': True,
+		'explaintext': True,
+	}
+	response = requests.get(apiURL, params=params)
+	data = response.json()
+	pages = data.get('query', {}).get('pages', {})
+	page = next(iter(pages.values()))
+	content = page.get('extract', '')
+	return content
 
 def return_message(prompt, author, memoryDict):
 	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. As of November 2023, the Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND LEAD THE WIKI). The Administrators of Conworlds are: T0oxi22 (real name Toxi), Andy Irons (real name Andy), and WorldMaker18 (real name Liam). The following Discord user sent you a prompt:" + author  + "(END USERNAME); Here is a Python dictionary entry containing the messages that the user messaging you has sent you so far: " + memoryDict[author]  + "(END MESSAGE HISTORY); You have been given the following prompt to complete in 200 words or less, do your best to fulfil the request as literally as possible. Be concise with your answer and don't be too flowery: " + prompt + " (END PROMPT)"
@@ -109,5 +126,17 @@ async def on_message(message):
 				await message.channel.send("User counter purged!")
 		else:
 			await message.reply("I'm sorry, but only Administrators can use this command")
+	if message.content.startswith("$readlore"):
+		roleList = message.author.roles
+		roleNameList = []
+		for role in roleList:
+			roleNameList.append(role.name)
+		if "Administrator" in roleNameList:
+			pageTitle = message.content[len("$readwiki "):].strip()
+			apiURL = 'https://wiki.conworld.org/api.php'
+			pageContent = fetch_page(pageTitle, apiURL)
+			await message.reply(page_content[:2000])
+		else:
+			await message.reply("At the moment, this command is experimental and limited only to Administrators."
 
 lore.run(DISCORD_TOKEN)
