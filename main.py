@@ -47,6 +47,14 @@ def fetchPageSections(pageTitle, apiURL):
 	else:
 		return "No sections found or an error occurred."
 
+async def sendChunkedMessage(channel, message, chunk_size=2000):
+	def splitMessage(messageText, size):
+		for i in range(0, len(messageText), size):
+			yield messageText[i:i + size]
+	chunks = splitMessage(message, chunk_size)
+	for chunk in chunks:
+		await channel.send(chunk)
+
 def pageRead(pageTitle, apiURL, author, memoryDict, hasPrivilege):
 	params = {
 		'action': 'query',
@@ -60,7 +68,7 @@ def pageRead(pageTitle, apiURL, author, memoryDict, hasPrivilege):
 	pages = data.get('query', {}).get('pages', {})
 	page = next(iter(pages.values()))
 	content = page.get('extract', '')
-	appendedPrompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to read a page. Here is the text content of that page: " + content + " (END PAGE CONTENT); Provide a summary in STRICTLY LESS THAN 1333 characters, being concise but as specific about details as possible."
+	appendedPrompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to read a page. Here is the text content of that page: " + content + " (END PAGE CONTENT); Provide a summary in STRICTLY LESS THAN 1333 characters, being concise but specific about details."
 	messages = [{"role": "system", "content": appendedPrompt}]
 	if hasPrivilege == True:
 		response = loreAI.chat.completions.create(
@@ -230,8 +238,12 @@ async def on_message(message):
 		pageBytes = fetchPageLength(pageTitle, apiURL)
 		if pageBytes >= 4000:
 			sectionList = fetchPageSections(pageTitle, apiURL)
-			await message.reply(pageTitle + " is too long to be read in its entirety. Use the command '$lore.section (page title) $ (section number)' including the dollar sign and where [section number] is chosen from the following list: \n" + sectionList)
-			await lore_thinking.delete()
+			if len(sectionList) > 1500:
+				await sendChunkedMessage(message.channel, pageTitle + " is too long to be read in its entirety. Use the command '$lore.section (page title) $ (section number)' including the dollar sign and where [section number] is chosen from the following list: \n" + sectionList)
+				await lore_thinking.delete()
+			else:
+				await message.reply(pageTitle + " is too long to be read in its entirety. Use the command '$lore.section (page title) $ (section number)' including the dollar sign and where [section number] is chosen from the following list: \n" + sectionList)
+				await lore_thinking.delete()
 		else:
 			pageReading = pageRead(pageTitle, apiURL, message.author.name, memory, hasPrivilege)
 			await message.reply(pageReading)
