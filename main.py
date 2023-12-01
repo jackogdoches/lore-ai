@@ -16,13 +16,43 @@ loreAI = OpenAI()
 memory = {}
 useCount = {}
 
-def fetch_page(pageTitle, apiURL, author, memoryDict, hasPrivilege):
+def fetchPageLength(pageTitle, apiURL):
+	params = {
+		'action': 'query',
+		'format': 'json',
+		'titles': pageTitle,
+		'prop': 'info',
+	}
+	response = requests.get(apiURL, params=params)
+	data = response.json()
+	pages = data.get('query', {}).get('pages', {})
+	page = next(iter(pages.values()))
+	lengthKB = page.get('length', 0)
+	return lengthKB
+
+def fetchPageSections(pageTitle, apiURL):
+	params = {
+		'action': 'parse',
+		'format': 'json',
+		'page': pageTitle,
+		'prop': 'sections',
+	}
+	response = requests.get(apiURL, params=params)
+	data = response.json()
+	if 'parse' in data and 'sections' in data['parse']:
+		sections = data['parse']['sections']
+		sectionList = [f"{section['index']}. {section['line']}" for section in sections]
+		numberedList = "\n".join(sectionList)
+		return numberedList
+	else:
+		return "No sections found or an error occurred."
+
+def pageRead(pageTitle, apiURL, author, memoryDict, hasPrivilege):
 	params = {
 		'action': 'query',
 		'format': 'json',
 		'titles': pageTitle,
 		'prop': 'extracts',
-		'exintro': True,
 		'explaintext': True,
 	}
 	response = requests.get(apiURL, params=params)
@@ -30,7 +60,7 @@ def fetch_page(pageTitle, apiURL, author, memoryDict, hasPrivilege):
 	pages = data.get('query', {}).get('pages', {})
 	page = next(iter(pages.values()))
 	content = page.get('extract', '')
-	appendedPrompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to read a page. Here is the text content of that page: " + content + " (END PAGE CONTENT); Provide a summary in less than 1598 characters (strict limit), being concise but as specific about details as possible."
+	appendedPrompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to read a page. Here is the text content of that page: " + content + " (END PAGE CONTENT); Provide a summary in STRICTLY LESS THAN 1333 characters, being concise but as specific about details as possible."
 	messages = [{"role": "system", "content": appendedPrompt}]
 	if hasPrivilege == True:
 		response = loreAI.chat.completions.create(
@@ -48,6 +78,38 @@ def fetch_page(pageTitle, apiURL, author, memoryDict, hasPrivilege):
 		memory[author] = retainMemory + " (END); THE FOLLOWING MESSAGE SENT BY YOU (LORE) IS A SUMMARY OF THE PAGE TITLED " + pageTitle + ": " + chatCompletion
 	else:
 		memory[author] = "THE FIRST MESSAGE FROM " + author + " WAS A REQUEST TO READ THE WIKI PAGE TITLED " + pageTitle + ", HERE IS THE SUMMARY YOU WROTE: " + chatCompletion
+	return chatCompletion
+
+def sectionRead(pageTitle, sectionNumber, apiURL, author, memoryDict, hasPrivilege):
+	params = {
+		'action': 'parse',
+		'format': 'json',
+		'page': pageTitle,
+		'prop': 'text',
+		'section': sectionNumber,
+		'disabletoc': True,
+	}
+	response = requests.get(apiURL, params=params)
+	data = response.json()
+	content = data.get('parse', {}).get('text', {}).get('*', '')
+	appendedPrompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to read a section of a page. Here is the text content of that section: " + content + " (END PAGE CONTENT); Provide a summary in STRICTLY LESS THAN 1333 characters, being concise but specific about details."
+	messages = [{"role": "system", "content": appendedPrompt}]
+	if hasPrivilege == True:
+		response = loreAI.chat.completions.create(
+			model='gpt-4-1106-preview',
+			messages=messages,
+		)
+	else:
+		response = loreAI.chat.completions.create(
+			model='gpt-3.5-turbo-1106',
+			messages=messages,
+		)
+	chatCompletion = response.choices[0].message.content
+	if author in memory:
+		retainMemory = memory[author]
+		memory[author] = retainMemory + " (END); THE FOLLOWING MESSAGE SENT BY YOU (LORE) IS AN EXCERPT FROM THE PAGE TITLED " + pageTitle + ": " + chatCompletion
+	else:
+		memory[author] = "THE FIRST MESSAGE FROM " + author + " WAS A REQUEST TO READ A SECTION OF THE WIKI PAGE TITLED " + pageTitle + ", HERE IS THE SUMMARY OF THE SECTION YOU WROTE: " + chatCompletion
 	return chatCompletion
 
 def return_message(prompt, author, memoryDict, hasPrivilege):
@@ -69,7 +131,6 @@ def return_message(prompt, author, memoryDict, hasPrivilege):
 	retainMemory = memory[author]
 	memory[author] = retainMemory + " (END); YOUR RESPONSE: " + statementOut
 	return statementOut
-
 
 @lore.event
 async def on_ready():
@@ -132,7 +193,7 @@ async def on_message(message):
 						await message.reply(returnMessage)
 						await lore_thinking.delete()
 	if message.content.startswith("$lore.help"):
-		returnMessage = "At the moment, my only commands are '$lore.chat', '$lore.help', '$lore.wipe', and '$lore.read'. To load page information into me, use '$lore.read' followed by exactly the name of the page as it appears on Conworlds (e.g., 'Sierra' will work but 'sierra' will not; NOTE: I am incapable of reading File: and Template: pages). Use '$lore.chat' at the beginning of a message and then ask me anything! Use '$lore.wipe' to clear my conversation history with you (it is recommended you do this somewhat frequently)."
+		returnMessage = "At the moment, my commands are '$lore.chat', '$lore.help', '$lore.wipe', '$lore.page', and '$lore.section'. To load page information into me, use '$lore.page' followed by exactly the name of the page as it appears on Conworlds (e.g., 'Sierra' will work but 'sierra' will not). If the page you requested is too long, you will be prompted to use '$lore.section' and provided with a numbered list of that page's sections. Use '$lore.chat' at the beginning of a message and then ask me anything! Use '$lore.wipe' to clear my conversation history with you (it is recommended you do this somewhat frequently)."
 		await message.reply(returnMessage)
 	if message.content.startswith("$lore.wipe"):
 		if message.author.name in memory:
@@ -154,26 +215,48 @@ async def on_message(message):
 				await message.channel.send("User counter purged!")
 		else:
 			await message.reply("I'm sorry, but only Administrators can use this command")
-	if message.content.startswith("$lore.read"):
+	if message.content.startswith("$lore.page"):
 		roleList = message.author.roles
 		roleNameList = []
 		for role in roleList:
 			roleNameList.append(role.name)
 		if "Administrator" in roleNameList or "Patron" in roleNameList:
 			hasPrivilege = True
-			lore_thinking = await message.channel.send("Thinking...")
-			pageTitle = message.content[len("$lore.read "):].strip()
-			apiURL = 'https://wiki.conworld.org/api.php'
-			pageRead = fetch_page(pageTitle, apiURL, message.author.name, memory, hasPrivilege)
-			await message.reply(pageRead)
-			await lore_thinking.delete()
 		else:
 			hasPrivilege = False
-			lore_thinking = await message.channel.send("Thinking...")
-			pageTitle = message.content[len("$lore.read "):].strip()
-			apiURL = 'https://wiki.conworld.org/api.php'
-			pageRead = fetch_page(pageTitle, apiURL, message.author.name, memory, hasPrivilege)
-			await message.reply(pageRead)
+		lore_thinking = await message.channel.send("Thinking...")
+		pageTitle = message.content[len("$lore.page "):].strip()
+		apiURL = 'https://wiki.conworld.org/api.php'
+		pageBytes = fetchPageLength(pageTitle, apiURL)
+		if pageBytes >= 4000:
+			sectionList = fetchPageSections(pageTitle, apiURL)
+			await message.reply(pageTitle + " is too long to be read in its entirety. Use the command '$lore.section (page title) $ (section number)' including the dollar sign and where [section number] is chosen from the following list: \n" + sectionList)
 			await lore_thinking.delete()
+		else:
+			pageReading = pageRead(pageTitle, apiURL, message.author.name, memory, hasPrivilege)
+			await message.reply(pageReading)
+			await lore_thinking.delete()
+	if message.content.startswith("$lore.section"):
+		roleList = message.author.roles
+		roleNameList = []
+		for role in roleList:
+			roleNameList.append(role.name)
+		if "Administrator" in roleNameList or "Patron" in roleNameList:
+			hasPrivilege = True
+		else:
+			hasPrivilege = False
+		loreThinking = await message.channel.send("Thinking...")
+		apiURL = 'https://wiki.conworld.org/api.php'
+		titleAndSection = message.content[len("lore.section "):]
+		titleAndSectionSplit = titleAndSection.split('$')
+		if len(titleAndSectionSplit) != 2:
+			await message.reply("Your input seems to be invalid. Please try the command again.")
+			loreThinking.delete()
+		else:
+			pageTitle = titleAndSectionSplit[0].strip()
+			sectionNumber = titleAndSectionSplit[1].strip()
+			sectionReading = sectionRead(pageTitle, sectionNumber, apiURL, message.author.name, memory, hasPrivilege)
+			await message.reply(sectionReading)
+			await loreThinking.delete()
 
 lore.run(DISCORD_TOKEN)
