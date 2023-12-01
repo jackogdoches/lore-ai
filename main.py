@@ -30,7 +30,7 @@ def fetch_page(pageTitle, apiURL, author, memoryDict, hasPrivilege):
 	pages = data.get('query', {}).get('pages', {})
 	page = next(iter(pages.values()))
 	content = page.get('extract', '')
-	appendedPrompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to read a page. Here is the text content of that page: " + content + " (END PAGE CONTENT); Provide a summary in less than 1999 characters (strict limit), being concise but as specific about details as possible."
+	appendedPrompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to read a page. Here is the text content of that page: " + content + " (END PAGE CONTENT); Provide a summary in less than 1598 characters (strict limit), being concise but as specific about details as possible."
 	messages = [{"role": "system", "content": appendedPrompt}]
 	if hasPrivilege == True:
 		response = loreAI.chat.completions.create(
