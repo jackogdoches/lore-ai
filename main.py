@@ -28,18 +28,15 @@ def editPage(pageTitle, sectionNumber, newContent, apiURL, password=LORE_PASSWOR
 	}
 	req0 = session.get(apiURL, params=loginTokenParams)
 	loginToken = req0.json()['query']['tokens']['logintoken']
-	print(loginToken)
 	#Login
 	loginParams = {
 		'action': 'login',
-		'lgname': 'Lore',
+		'lgname': 'Lore@Lore',
 		'lgpassword': password,
 		'lgtoken': loginToken,
 		'format': 'json',
 	}
 	loginReq = session.post(apiURL, data=loginParams)
-	if loginReq.json().get('clientlogin', {}).get('status') != 'PASS':
-		print(loginReq.json())
 	#Get edit token
 	tokenParams = {
 		'action': 'query',
@@ -80,14 +77,7 @@ def generate(prompt, pageTitle, sectionNumber, apiURL, author):
 	)
 	chatCompletion = response.choices[0].message.content
 	editResponse = editPage(pageTitle, sectionNumber, chatCompletion, apiURL)
-	editResponseContext = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. You have performed an edit API request and have received this response from the website: " + str(editResponse) + " (END JSON RESPONSE); Communicate the results of the JSON response (i.e., whether or not the edit action returned as an error) in a detailed brief."
-	editResponseMessage = [{"role": "system", "content": editResponseContext}]
-	editResponseCompletion = loreAI.chat.completions.create(
-		model='gpt-3.5-turbo-1106',
-		messages=messages,
-	)
-	editResponseProcessed = editResponseCompletion.choices[0].message.content
-	return editResponseProcessed
+	return str(editResponse)
 
 def fetchPageLength(pageTitle, apiURL):
 	params = {
