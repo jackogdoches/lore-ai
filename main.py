@@ -18,18 +18,28 @@ memory = {}
 useCount = {}
 
 def editPage(pageTitle, sectionNumber, newContent, apiURL, password=LORE_PASSWORD):
-	#Login
 	session = requests.Session()
+	#Login token
+	loginTokenParams = {
+		'action': 'query',
+		'meta': 'tokens',
+		'type': 'login',
+		'format': 'json',
+	}
+	req0 = session.get(apiURL, params=loginTokenParams)
+	loginToken = req0.json()['query']['tokens']['logintoken']
+	print(loginToken)
+	#Login
 	loginParams = {
 		'action': 'login',
 		'lgname': 'Lore',
 		'lgpassword': password,
+		'lgtoken': loginToken,
 		'format': 'json',
 	}
-	req1 = session.post(apiURL, data=loginParams)
-	loginToken = req1.json()['login']['token']
-	loginParams['lgtoken'] = loginToken
-	session.post(apiURL, loginParams)
+	loginReq = session.post(apiURL, data=loginParams)
+	if loginReq.json().get('clientlogin', {}).get('status') != 'PASS':
+		print(loginReq.json())
 	#Get edit token
 	tokenParams = {
 		'action': 'query',
@@ -338,7 +348,7 @@ async def on_message(message):
 		roleNameList = []
 		for role in roleList:
 			roleNameList.append(role.name)
-		if "Administrator" in roleNameList or "Patron" in roleNameList:
+		if "Bureaucrat" in roleNameList:
 			loreProcessing = await message.channel.send("Processing your request...")
 			apiURL = 'https://wiki.conworld.org/api.php'
 			titleSectPrompt = message.content[len("$lore.edit "):]
