@@ -80,7 +80,7 @@ def generate(prompt, pageTitle, sectionNumber, apiURL, author):
 	)
 	chatCompletion = response.choices[0].message.content
 	editResponse = editPage(pageTitle, sectionNumber, chatCompletion, apiURL)
-	editResponseContext = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to edit a section of a page. You have performed the edit API request and have received this response from the website: " + str(editResponse) + " (END JSON RESPONSE); Please provide a human-understandable interpretation of the json response, being as brief as possible without skipping details."
+	editResponseContext = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. You have performed an edit API request and have received this response from the website: " + str(editResponse) + " (END JSON RESPONSE); Communicate the results of the JSON response (i.e., whether or not the edit action returned as an error) in a detailed brief."
 	editResponseMessage = [{"role": "system", "content": editResponseContext}]
 	editResponseCompletion = loreAI.chat.completions.create(
 		model='gpt-3.5-turbo-1106',
