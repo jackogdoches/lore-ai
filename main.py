@@ -17,7 +17,7 @@ loreAI = OpenAI()
 memory = {}
 useCount = {}
 
-def editPage(pageTitle, newContent, apiURL, password=LORE_PASSWORD):
+def editPage(pageTitle, sectionNumber, newContent, apiURL, password=LORE_PASSWORD):
 	#Login
 	session = requests.Session()
 	loginParams = {
@@ -42,12 +42,42 @@ def editPage(pageTitle, newContent, apiURL, password=LORE_PASSWORD):
 	editParams = {
 		'action': 'edit',
 		'title': pageTitle,
+		'section': sectionNumber,
 		'text': newContent,
 		'token': editToken,
 		'format': 'json',
 	}
 	req3 = session.post(apiURL, data=editParams)
 	return req3.json()
+
+def generate(prompt, pageTitle, sectionNumber, apiURL, author):
+	params = {
+		'action': 'parse',
+		'format': 'json',
+		'page': pageTitle,
+		'prop': 'text',
+		'section': sectionNumber,
+		'disabletoc': True,
+	}
+	response = requests.get(apiURL, params=params)
+	data = response.json()
+	content = data.get('parse', {}).get('text', {}).get('*', '')
+	appendedPrompt = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to edit a section of a page. Here is the current text content of that section: " + content + " (END PAGE CONTENT); The user has given you this prompt: " + prompt + " (END PROMPT); Your output should be formatted in wikitext and written in an encylopeadic, neutral-pov style."
+	messages = [{"role": "system", "content": appendedPrompt}]
+	response = loreAI.chat.completions.create(
+		model='gpt-4-1106-preview',
+		messages=messages,
+	)
+	chatCompletion = response.choices[0].message.content
+	editResponse = editPage(pageTitle, sectionNumber, chatCompletion, apiURL)
+	editResponseContext = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to edit a section of a page. You have performed the edit API request and have received this response from the website: " + editResponse + " (END JSON RESPONSE); Please provide a human-understandable interpretation of the json response, being as brief as possible without skipping details."
+	editResponseMessage = [{"role": "system", "content": responseContext}]
+	editResponseCompletion = loreAI.chat.complestions.create(
+		model='gpt-4-1106-preview',
+		messages=messages,
+	)
+	editResponseProcessed = editResponseCompletion.choices[0].message.content
+	return editResponseProcessed
 
 def fetchPageLength(pageTitle, apiURL):
 	params = {
@@ -296,12 +326,34 @@ async def on_message(message):
 		titleAndSectionSplit = titleAndSection.split('$')
 		if len(titleAndSectionSplit) != 2:
 			await message.reply("Your input seems to be invalid. Please try the command again.")
-			loreThinking.delete()
+			await loreThinking.delete()
 		else:
 			pageTitle = titleAndSectionSplit[0].strip()
 			sectionNumber = titleAndSectionSplit[1].strip()
 			sectionReading = sectionRead(pageTitle, sectionNumber, apiURL, message.author.name, memory, hasPrivilege)
 			await message.reply(sectionReading)
 			await loreThinking.delete()
+	if message.content.startswith("$lore.edit"):
+		roleList = message.author.roles
+		roleNameList = []
+		for role in roleList:
+			roleNameList.append(role.name)
+		if "Administrator" in roleNameList or "Patron" in roleNameList:
+			loreProcessing = await message.channel.send("Processing your request...")
+			apiURL = 'https://wiki.conworld.org/api.php'
+			titleSectPrompt = message.content[len("$lore.edit "):]
+			titleSectPromptSplit = titleAndPrompt.split('$')
+			if len(titleAndSectionSplit) != 3:
+				await message.reply("Your input seems to be invalid. Please try again.")
+				await loreThinking.delete()
+			else:
+				pageTitle = titleSectPromptSplit[0].strip()
+				sectionNumber = titleSectPromptSplit[1].strip()
+				editPrompt = titleSectPromptSplit[2]
+				editProcess = generate(editPrompt, pageTitle, sectionNumber, apiURL, message.author.name)
+				await message.reply(editProcess)
+				await loreThinking.delete()
+		else:
+			await message.reply("This command is currently restricted")
 
 lore.run(DISCORD_TOKEN)
