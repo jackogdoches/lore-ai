@@ -7,6 +7,7 @@ import requests
 load_dotenv()
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+LORE_PASSWORD = os.getenv("LORE_PASSWORD")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -15,6 +16,38 @@ lore = discord.Client(intents=intents)
 loreAI = OpenAI()
 memory = {}
 useCount = {}
+
+def editPage(pageTitle, newContent, apiURL, password=LORE_PASSWORD):
+	#Login
+	session = requests.Session()
+	loginParams = {
+		'action': 'login',
+		'lgname': Lore,
+		'lgpassword': password,
+		'format': 'json',
+	}
+	req1 = session.post(apiURL, data=loginParams)
+	loginToken = re1.json()['login']['token']
+	loginParams['lgtoken'] = loginToken
+	session.post(apiURL, loginParams)
+	#Get edit token
+	tokenParams = {
+		'action': 'query',
+		'meta': 'tokens',
+		'format': 'json',
+	}
+	req2 = session.get(apiURL, params=tokenParams)
+	editToken = req2.json()['query']['tokens']['csrftoken']
+	#Perform edit
+	editParams = {
+		'action': 'edit',
+		'title': pageTitle,
+		'text': newContent,
+		'token': editToken,
+		'format': 'json',
+	}
+	req3 = session.post(apiURL, data=editParams)
+	return req3.json()
 
 def fetchPageLength(pageTitle, apiURL):
 	params = {
