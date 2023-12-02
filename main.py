@@ -22,12 +22,12 @@ def editPage(pageTitle, sectionNumber, newContent, apiURL, password=LORE_PASSWOR
 	session = requests.Session()
 	loginParams = {
 		'action': 'login',
-		'lgname': Lore,
+		'lgname': 'Lore',
 		'lgpassword': password,
 		'format': 'json',
 	}
 	req1 = session.post(apiURL, data=loginParams)
-	loginToken = re1.json()['login']['token']
+	loginToken = req1.json()['login']['token']
 	loginParams['lgtoken'] = loginToken
 	session.post(apiURL, loginParams)
 	#Get edit token
@@ -70,10 +70,10 @@ def generate(prompt, pageTitle, sectionNumber, apiURL, author):
 	)
 	chatCompletion = response.choices[0].message.content
 	editResponse = editPage(pageTitle, sectionNumber, chatCompletion, apiURL)
-	editResponseContext = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to edit a section of a page. You have performed the edit API request and have received this response from the website: " + editResponse + " (END JSON RESPONSE); Please provide a human-understandable interpretation of the json response, being as brief as possible without skipping details."
-	editResponseMessage = [{"role": "system", "content": responseContext}]
-	editResponseCompletion = loreAI.chat.complestions.create(
-		model='gpt-4-1106-preview',
+	editResponseContext = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to edit a section of a page. You have performed the edit API request and have received this response from the website: " + str(editResponse) + " (END JSON RESPONSE); Please provide a human-understandable interpretation of the json response, being as brief as possible without skipping details."
+	editResponseMessage = [{"role": "system", "content": editResponseContext}]
+	editResponseCompletion = loreAI.chat.completions.create(
+		model='gpt-3.5-turbo-1106',
 		messages=messages,
 	)
 	editResponseProcessed = editResponseCompletion.choices[0].message.content
@@ -342,8 +342,8 @@ async def on_message(message):
 			loreProcessing = await message.channel.send("Processing your request...")
 			apiURL = 'https://wiki.conworld.org/api.php'
 			titleSectPrompt = message.content[len("$lore.edit "):]
-			titleSectPromptSplit = titleAndPrompt.split('$')
-			if len(titleAndSectionSplit) != 3:
+			titleSectPromptSplit = titleSectPrompt.split('$')
+			if len(titleSectPromptSplit) != 3:
 				await message.reply("Your input seems to be invalid. Please try again.")
 				await loreThinking.delete()
 			else:
@@ -352,7 +352,7 @@ async def on_message(message):
 				editPrompt = titleSectPromptSplit[2]
 				editProcess = generate(editPrompt, pageTitle, sectionNumber, apiURL, message.author.name)
 				await message.reply(editProcess)
-				await loreThinking.delete()
+				await loreProcessing.delete()
 		else:
 			await message.reply("This command is currently restricted")
 
