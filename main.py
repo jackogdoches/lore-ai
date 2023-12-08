@@ -34,6 +34,13 @@ class Querier:
 		self.history[self.uses] = query
 		self.uses = self.uses + 1
 
+	def readHistory(self):
+		formattedHistory = []
+		for index, query in self.history.items():
+			querySummary = f"Query {index}: Command - {query.command}, Prompt - {query.prompt}, Response - {query.receipt}"
+			formattedHistory.append(querySummary)
+		return "\n".join(formattedHistory)
+
 class Query:
 	def __init__(self, index, message):
 		self.index = index					#int
@@ -215,12 +222,12 @@ def sectionRead(pageTitle, sectionNumber, query, querier, apiURL=API_URL):
 			messages=messages,
 		)
 	chatCompletion = response.choices[0].message.content
-	query.addReceipt = chatCompletion
+	query.addReceipt(chatCompletion)
 	return chatCompletion
 
 # CHAT
 def returnChat(query, querier):
-	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. The Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND ARE CO-LEADERS OF THE WIKI). The Administrators (sysops) of Conworlds are: T0oxi22, Andy Irons, and WorldMaker18. The following Discord user sent you a prompt: " + querier.name  + " ; Here is a Python dictionary entry containing your message history with " + querier.name + " up to this point: " + str(querier.history) + " (END MESSAGE HISTORY); You have been given the following prompt to complete in STRICTLY EQUAL TO OR LESS THAN 1000 characters. Fulfil the request as literally as possible. Be concise with your answer but be very specific with details: " + query.prompt + " (END PROMPT)"
+	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. The Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND ARE CO-LEADERS OF THE WIKI). The Administrators (sysops) of Conworlds are: T0oxi22, Andy Irons, and WorldMaker18. The following Discord user sent you a prompt: " + querier.name  + " ; Here is a Python dictionary entry containing your message history with " + querier.name + " up to this point: " + querier.readHistory() + " (END MESSAGE HISTORY); You have been given the following prompt to complete in STRICTLY EQUAL TO OR LESS THAN 1000 characters. Fulfil the request as literally as possible. Be concise with your answer but be very specific with details: " + query.prompt + " (END PROMPT)"
 	messages = [{"role": "system", "content": appended_prompt}]
 	if querier.privilege == True:
 		response = loreAI.chat.completions.create(
@@ -282,7 +289,6 @@ async def on_message(message):
 		query = newQuery(message, queriers)
 		if query.command == "chat":
 			loreThinking = await message.channel.send("Thinking...")
-			querier.use(query)
 			chat = returnChat(query, querier)
 			await message.reply(chat)
 			await loreThinking.delete()
@@ -291,7 +297,6 @@ async def on_message(message):
 			await message.reply(help)
 		if query.command == "page":
 			loreThinking = await message.channel.send("Thinking...")
-			querier.use(query)
 			pageTitle = query.prompt
 			pageBytes = fetchPageLength(pageTitle)
 			if pageBytes >= 4000:
@@ -308,7 +313,6 @@ async def on_message(message):
 				await loreThinking.delete()
 		if query.command == "section":
 			loreThinking = await message.channel.send("Thinking...")
-			querier.use(query)
 			titleAndSection = query.prompt.split('$')
 			if len(titleAndSection) != 2:
 				await message.reply("Your input seems to be invalid. Please try the command again.")
@@ -355,5 +359,9 @@ async def on_message(message):
 					if querierObject.uses > 0:
 						querierObject.uses = 0
 						await message.channel.send("Use counter reset for " + querierObject.name)
+		if query.command == "history":
+			if "Administrator" in querier.roles:
+				for querierObject in queriers.values():
+					await message.reply(querierObject.readHistory())
 
 lore.run(DISCORD_TOKEN)
