@@ -94,8 +94,8 @@ def editPage(pageTitle, sectionNumber, newContent, apiURL, password=LORE_PASSWOR
 	req3 = session.post(apiURL, data=editParams)
 	return req3.json()
 
-# GENERATE TEXT CONTENT
-def generate(prompt, pageTitle, sectionNumber, apiURL, author):
+# GENERATE PAGE TEXT
+def generate(prompt, pageTitle, sectionNumber, apiURL=API_URL, querier):
 	params = {
 		'action': 'parse',
 		'format': 'json',
@@ -107,7 +107,7 @@ def generate(prompt, pageTitle, sectionNumber, apiURL, author):
 	response = requests.get(apiURL, params=params)
 	data = response.json()
 	content = data.get('parse', {}).get('text', {}).get('*', '')
-	appendedPrompt = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. The user " + author + " has asked you to edit a section of a page. Here is the current text content of that section: " + content + " (END PAGE CONTENT); The user has given you this prompt: " + prompt + " (END PROMPT); Your output should be formatted in wikitext and written in an encylopeadic, neutral-pov style."
+	appendedPrompt = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. The user " + querier.name + " has asked you to edit a section of a page. Here is the current text content of that section: " + content + " (END PAGE CONTENT); The user has given you this prompt: " + prompt + " (END PROMPT); Your output should be  written in an encylopeadic, neutral-point of view style. REMEMBER TO FORMAT YOUR OUTPUT EXCLUSIVELY AS WIKITEXT MARKUP AS IT IS GETTING DIRECTLY POSTED ON A WIKI PAGE."
 	messages = [{"role": "system", "content": appendedPrompt}]
 	response = loreAI.chat.completions.create(
 		model='gpt-4-1106-preview',
@@ -117,7 +117,7 @@ def generate(prompt, pageTitle, sectionNumber, apiURL, author):
 	editResponse = editPage(pageTitle, sectionNumber, chatCompletion, apiURL)
 	return str(editResponse)
 
-# RETRIEVE PAGE LENGTH
+# FETCH PAGE LENGTH
 def fetchPageLength(pageTitle, apiURL=API_URL):
 	params = {
 		'action': 'query',
@@ -132,7 +132,7 @@ def fetchPageLength(pageTitle, apiURL=API_URL):
 	lengthKB = page.get('length', 0)
 	return lengthKB
 
-# RETRIEVE PAGE SECTION LIST
+# FETCH PAGE SECTION LIST
 def fetchSectionsList(pageTitle, apiURL=API_URL):
 	params = {
 		'action': 'parse',
@@ -150,7 +150,7 @@ def fetchSectionsList(pageTitle, apiURL=API_URL):
 	else:
 		return "No sections found or an error occurred."
 
-# MULTI-MESSAGE
+# SEND MESSAGE IN CHUNKS
 async def sendChunkedMessage(channel, message, chunk_size=2000):
 	def splitMessage(messageText, size):
 		for i in range(0, len(messageText), size):
@@ -159,7 +159,7 @@ async def sendChunkedMessage(channel, message, chunk_size=2000):
 	for chunk in chunks:
 		await channel.send(chunk)
 
-# READ PAGE DATA
+# PAGE READ
 def pageRead(pageTitle, apiURL=API_URL, query, querier):
 	params = {
 		'action': 'query',
@@ -325,47 +325,35 @@ async def on_message(message):
 
 		# RESTRICTED COMMANDS
 		if query.command == "edit":
-		if query.command == "delete":
-		if query.command == "purge":
-
-# OLD ON MESSAGE
-@lore.event
-async def on_message(message):
-	if message.content.startswith("$lore.purge"):
-		roleList = message.author.roles
-		roleNameList = []
-		for role in roleList:
-			roleNameList.append(role.name)
-		if "Administrator" in roleNameList:
-			if len(memory) != 0:
-				memory.clear()
-				await message.channel.send("All memories purged!")
-			if len(useCount) != 0:
-				useCount.clear()
-				await message.channel.send("User counter purged!")
-		else:
-			await message.reply("I'm sorry, but only Administrators can use this command")
-	if message.content.startswith("$lore.edit"):
-		roleList = message.author.roles
-		roleNameList = []
-		for role in roleList:
-			roleNameList.append(role.name)
-		if "Bureaucrat" in roleNameList:
-			loreProcessing = await message.channel.send("Processing your request...")
-			apiURL = 'https://wiki.conworld.org/api.php'
-			titleSectPrompt = message.content[len("$lore.edit "):]
-			titleSectPromptSplit = titleSectPrompt.split('$')
-			if len(titleSectPromptSplit) != 3:
-				await message.reply("Your input seems to be invalid. Please try again.")
-				await loreThinking.delete()
+			if "Bureaucrat" in querier.roles:
+				loreProcessing = await message.channel.send("Processing your request...")
+				querier.use(query)
+				titleSectPrompt = query.prompt.split('$')
+				if len(titleSectPrompt) != 3:
+					await message.reply("Your input seems to be invalid. Please try again.")
+					await loreProcessing.delete()
+				else:
+					pageTitle = titleSectPrompt[0].strip()
+					sectionNumber = titleSectPrompt[1].strip()
+					editPrompt = titleSectPrompt[2].strip()
+					processEdit = generate(editPrompt, pageTitle, sectionNumber, querier)
+					await message.reply(processEdit)
+					await loreProcessing.delete()
 			else:
-				pageTitle = titleSectPromptSplit[0].strip()
-				sectionNumber = titleSectPromptSplit[1].strip()
-				editPrompt = titleSectPromptSplit[2]
-				editProcess = generate(editPrompt, pageTitle, sectionNumber, apiURL, message.author.name)
-				await message.reply(editProcess)
-				await loreProcessing.delete()
-		else:
-			await message.reply("This command is currently restricted")
+				message.reply("This command is currently restricted.")
+		if query.command == "delete":
+			await message.reply("This command is currently under construction.")
+		if query.command == "purge":
+			if "Administrator" in querier.roles:
+				for querier in queriers:
+					if querier.history.len() > 0:
+						querier.history = {}
+						await message.channel.send("Message history purged for " + querier.name)
+		if query.command == "reset":
+			if "Administrator" in querier.roles:
+				for querier in queriers:
+					if querier.uses > 0:
+						querier.uses = 0
+						await message.channel.send("Use counter reset for " + querier.name)
 
 lore.run(DISCORD_TOKEN)
