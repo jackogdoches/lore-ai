@@ -95,7 +95,7 @@ def editPage(pageTitle, sectionNumber, newContent, apiURL, password=LORE_PASSWOR
 	return req3.json()
 
 # GENERATE PAGE TEXT
-def generate(prompt, pageTitle, sectionNumber, apiURL=API_URL, querier):
+def generate(prompt, pageTitle, sectionNumber, querier, apiURL=API_URL):
 	params = {
 		'action': 'parse',
 		'format': 'json',
@@ -160,7 +160,7 @@ async def sendChunkedMessage(channel, message, chunk_size=2000):
 		await channel.send(chunk)
 
 # PAGE READ
-def pageRead(pageTitle, apiURL=API_URL, query, querier):
+def pageRead(pageTitle, query, querier, apiURL=API_URL):
 	params = {
 		'action': 'query',
 		'format': 'json',
@@ -190,7 +190,7 @@ def pageRead(pageTitle, apiURL=API_URL, query, querier):
 	return chatCompletion
 
 # SECTION READ
-def sectionRead(pageTitle, sectionNumber, apiURL=API_URL, query, querier):
+def sectionRead(pageTitle, sectionNumber, query, querier, apiURL=API_URL):
 	params = {
 		'action': 'parse',
 		'format': 'json',
@@ -220,7 +220,7 @@ def sectionRead(pageTitle, sectionNumber, apiURL=API_URL, query, querier):
 
 # CHAT
 def returnChat(query, querier):
-	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. The Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND ARE CO-LEADERS OF THE WIKI). The Administrators (sysops) of Conworlds are: T0oxi22, Andy Irons, and WorldMaker18. The following Discord user sent you a prompt: " + querier.name  + " ; Here is a Python dictionary entry containing your message history with " + querier.name + " up to this point: " + querier.history  + " (END MESSAGE HISTORY); You have been given the following prompt to complete in STRICTLY EQUAL TO OR LESS THAN 1000 characters. Fulfil the request as literally as possible. Be concise with your answer but be very specific with details: " + query.prompt + " (END PROMPT)"
+	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. The Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND ARE CO-LEADERS OF THE WIKI). The Administrators (sysops) of Conworlds are: T0oxi22, Andy Irons, and WorldMaker18. The following Discord user sent you a prompt: " + querier.name  + " ; Here is a Python dictionary entry containing your message history with " + querier.name + " up to this point: " + str(querier.history) + " (END MESSAGE HISTORY); You have been given the following prompt to complete in STRICTLY EQUAL TO OR LESS THAN 1000 characters. Fulfil the request as literally as possible. Be concise with your answer but be very specific with details: " + query.prompt + " (END PROMPT)"
 	messages = [{"role": "system", "content": appended_prompt}]
 	if querier.privilege == True:
 		response = loreAI.chat.completions.create(
@@ -255,10 +255,10 @@ def addQuerier(message, queriers):
 	return newQuerier
 
 def newQuery(message, queriers):
-	localQuierier = queriers[message.author.name]
-	queryIndex = localQuierier.uses
+	localQuerier = queriers[message.author.name]
+	queryIndex = localQuerier.uses
 	query = Query(queryIndex, message)
-	localQuierer.use(query)
+	localQuerier.use(query)
 	return query
 
 # EVENT FUNCTIONS =======================================================================================================
@@ -345,15 +345,15 @@ async def on_message(message):
 			await message.reply("This command is currently under construction.")
 		if query.command == "purge":
 			if "Administrator" in querier.roles:
-				for querier in queriers:
-					if querier.history.len() > 0:
-						querier.history = {}
-						await message.channel.send("Message history purged for " + querier.name)
+				for querierObject in queriers.values():
+					if len(querierObject.history) > 0:
+						querierObject.history = {}
+						await message.channel.send("Message history purged for " + querierObject.name)
 		if query.command == "reset":
 			if "Administrator" in querier.roles:
-				for querier in queriers:
-					if querier.uses > 0:
-						querier.uses = 0
-						await message.channel.send("Use counter reset for " + querier.name)
+				for querierObject in queriers.values():
+					if querierObject.uses > 0:
+						querierObject.uses = 0
+						await message.channel.send("Use counter reset for " + querierObject.name)
 
 lore.run(DISCORD_TOKEN)
