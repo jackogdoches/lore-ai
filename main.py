@@ -225,7 +225,7 @@ def sectionRead(pageTitle, sectionNumber, query, querier, apiURL=API_URL):
 	query.addReceipt(chatCompletion)
 	return chatCompletion
 
-# CHAT
+# CHAT COMPLETION
 def returnChat(query, querier):
 	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. The Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND ARE CO-LEADERS OF THE WIKI). The Administrators (sysops) of Conworlds are: T0oxi22, Andy Irons, and WorldMaker18. The following Discord user sent you a prompt: " + querier.name  + " ; Here is a Python dictionary entry containing your message history with " + querier.name + " up to this point: " + querier.readHistory() + " (END MESSAGE HISTORY); You have been given the following prompt to complete in STRICTLY EQUAL TO OR LESS THAN 1000 characters. Fulfil the request as literally as possible. Be concise with your answer but be very specific with details: " + query.prompt + " (END PROMPT)"
 	messages = [{"role": "system", "content": appended_prompt}]
@@ -246,7 +246,7 @@ def returnChat(query, querier):
 	return statementOut
 
 # QUERY FUNCTIONS ========================================================================================================
-# CREATE QUERIER OBJECT
+# CREATE USER-OBJECT ('QUERIER')
 def addQuerier(message, queriers):
 	newName = message.author.name
 	roleList = message.author.roles
@@ -261,6 +261,7 @@ def addQuerier(message, queriers):
 	queriers[newName] = newQuerier
 	return newQuerier
 
+# CONVERT DISCORD.PY 'MESSAGE' TO LORE-AI 'QUERY'
 def newQuery(message, queriers):
 	localQuerier = queriers[message.author.name]
 	queryIndex = localQuerier.uses
@@ -278,23 +279,31 @@ async def on_ready():
 		guild_count = guild_count + 1
 	print("Lore is in " + str(guild_count) + " servers.")
 
-#NEW ON MESSAGE
+#ON_MESSAGE
 @lore.event
 async def on_message(message):
+
+	# COMMAND TRIGGER
 	if message.content.startswith("$lore"):
-		if message.author.name not in queriers:
+		if message.author.name not in queriers:			# CHECK IF NEW USER-OBJECT; ELSE LOAD EXISTING
 			querier = addQuerier(message, queriers)
 		else:
 			querier = queriers[message.author.name]
-		query = newQuery(message, queriers)
+		query = newQuery(message, queriers)			 # DISCORD MESSAGE REFORMATTED INTO LORE-FRIENDLY QUERY
+
+		# CHAT COMPLETION WITH MEMORY
 		if query.command == "chat":
 			loreThinking = await message.channel.send("Thinking...")
 			chat = returnChat(query, querier)
 			await message.reply(chat)
 			await loreThinking.delete()
+
+		# HELP MESSAGE
 		if query.command == "help":
-			help = "At the moment, my public commands are '$lore.chat', '$lore.help', '$lore.wipe', '$lore.page', and '$lore.section'. To load page information into me, use '$lore.page' followed by exactly the name of the page as it appears on Conworlds (e.g., 'Sierra' will work but 'sierra' will not). If the page you requested is too long, you will be prompted to use '$lore.section' and provided with a numbered list of that page's sections. Use '$lore.chat' at the beginning of a message and then ask me anything! Use '$lore.wipe' to clear my conversation history with you (it is recommended you do this somewhat frequently)."
+			help = "At the moment, my public commands are '$lore.chat', '$lore.wipe', '$lore.page', and '$lore.section'.\nTo load page information into me, use '$lore.page' followed by exactly the name of the page as it appears on Conworlds (e.g., 'Sierra' will work but 'sierra' will not).\nIf the page you requested is too long, you will be prompted to use '$lore.section' and provided with a numbered list of that page's sections.\nUse '$lore.chat' to ask me anything; I'll be able remember the summary of any page or section I have read.\nUse '$lore.wipe' to clear your conversation history; it is recommended you do this freqeuntly."
 			await message.reply(help)
+
+		# PAGE READER / SECTION LIST LOADER
 		if query.command == "page":
 			loreThinking = await message.channel.send("Thinking...")
 			pageTitle = query.prompt
@@ -311,6 +320,8 @@ async def on_message(message):
 				pageReading = pageRead(pageTitle, querier)
 				await message.reply(pageReading)
 				await loreThinking.delete()
+
+		# SECTION READER
 		if query.command == "section":
 			loreThinking = await message.channel.send("Thinking...")
 			titleAndSection = query.prompt.split('$')
@@ -323,11 +334,14 @@ async def on_message(message):
 				response = sectionRead(pageTitle, sectionNumber, query, querier)
 				await message.reply(response)
 				await loreThinking.delete()
+
+		# WIPE MESSAGE HISTORY
 		if query.command == "wipe":
 			querier.history = {}
 			await message.reply("Message history for " + querier.name + " wiped!")
 
 		# RESTRICTED COMMANDS
+		# CREATE/EDIT PAGE/SECTION
 		if query.command == "edit":
 			if "Bureaucrat" in querier.roles:
 				loreProcessing = await message.channel.send("Processing your request...")
@@ -345,23 +359,39 @@ async def on_message(message):
 					await loreProcessing.delete()
 			else:
 				message.reply("This command is currently restricted.")
+
+		# DELETE PAGE
 		if query.command == "delete":
 			await message.reply("This command is currently under construction.")
+
+		# PURGE ALL USER-OBJECT HISTORIES
 		if query.command == "purge":
 			if "Administrator" in querier.roles:
 				for querierObject in queriers.values():
 					if len(querierObject.history) > 0:
 						querierObject.history = {}
 						await message.channel.send("Message history purged for " + querierObject.name)
+
+		# RESET ALL USER-OBJECT USE COUNTERS
 		if query.command == "reset":
 			if "Administrator" in querier.roles:
 				for querierObject in queriers.values():
 					if querierObject.uses > 0:
 						querierObject.uses = 0
 						await message.channel.send("Use counter reset for " + querierObject.name)
+
+		# SHOW CONTENTS OF ALL USER-OBJECT HISTORIES
 		if query.command == "history":
 			if "Administrator" in querier.roles:
 				for querierObject in queriers.values():
-					await message.reply(querierObject.readHistory())
+					await message.channel.send("BEGIN MESSAGES FROM " + querierObject.name)
+					if len(querierObject.readHistory()) > 1500:
+						sendChunkedMessage(message.channel, querierObject.readHistory())
+					else:
+						await message.channel.send(querierObject.readHistory())
+
+		# INVALID COMMAND
+		else:
+			await message.reply("You have entered an invalid command. Use '$lore.help' for full list.")
 
 lore.run(DISCORD_TOKEN)
