@@ -299,12 +299,12 @@ async def on_message(message):
 			await loreThinking.delete()
 
 		# HELP MESSAGE
-		else if query.command == "help":
+		elif query.command == "help":
 			help = "At the moment, my public commands are '$lore.chat', '$lore.wipe', '$lore.page', and '$lore.section'.\nTo load page information into me, use '$lore.page' followed by exactly the name of the page as it appears on Conworlds (e.g., 'Sierra' will work but 'sierra' will not).\nIf the page you requested is too long, you will be prompted to use '$lore.section' and provided with a numbered list of that page's sections.\nUse '$lore.chat' to ask me anything; I'll be able remember the summary of any page or section I have read.\nUse '$lore.wipe' to clear your conversation history; it is recommended you do this freqeuntly."
 			await message.reply(help)
 
 		# PAGE READER / SECTION LIST LOADER
-		else if query.command == "page":
+		elif query.command == "page":
 			loreThinking = await message.channel.send("Thinking...")
 			pageTitle = query.prompt
 			pageBytes = fetchPageLength(pageTitle)
@@ -322,7 +322,7 @@ async def on_message(message):
 				await loreThinking.delete()
 
 		# SECTION READER
-		else if query.command == "section":
+		elif query.command == "section":
 			loreThinking = await message.channel.send("Thinking...")
 			titleAndSection = query.prompt.split('$')
 			if len(titleAndSection) != 2:
@@ -336,13 +336,13 @@ async def on_message(message):
 				await loreThinking.delete()
 
 		# WIPE MESSAGE HISTORY
-		else if query.command == "wipe":
+		elif query.command == "wipe":
 			querier.history = {}
 			await message.reply("Message history for " + querier.name + " wiped!")
 
 		# RESTRICTED COMMANDS
 		# CREATE/EDIT PAGE/SECTION
-		else if query.command == "edit":
+		elif query.command == "edit":
 			if "Bureaucrat" in querier.roles:
 				loreProcessing = await message.channel.send("Processing your request...")
 				querier.use(query)
@@ -361,11 +361,11 @@ async def on_message(message):
 				message.reply("This command is currently restricted.")
 
 		# DELETE PAGE
-		else if query.command == "delete":
+		elif query.command == "delete":
 			await message.reply("This command is currently under construction.")
 
 		# PURGE ALL USER-OBJECT HISTORIES
-		else if query.command == "purge":
+		elif query.command == "purge":
 			if "Administrator" in querier.roles:
 				for querierObject in queriers.values():
 					if len(querierObject.history) > 0:
@@ -373,7 +373,7 @@ async def on_message(message):
 						await message.channel.send("Message history purged for " + querierObject.name)
 
 		# RESET ALL USER-OBJECT USE COUNTERS
-		else if query.command == "reset":
+		elif query.command == "reset":
 			if "Administrator" in querier.roles:
 				for querierObject in queriers.values():
 					if querierObject.uses > 0:
@@ -381,7 +381,7 @@ async def on_message(message):
 						await message.channel.send("Use counter reset for " + querierObject.name)
 
 		# SHOW CONTENTS OF ALL USER-OBJECT HISTORIES
-		else if query.command == "history":
+		elif query.command == "history":
 			if "Administrator" in querier.roles:
 				for querierObject in queriers.values():
 					await message.channel.send("BEGIN MESSAGES FROM " + querierObject.name)
