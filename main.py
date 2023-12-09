@@ -391,7 +391,7 @@ async def on_message(message):
 						await message.channel.send(querierObject.readHistory())
 
 		# INVALID COMMAND
-		else
+		else:
 			await message.reply("You have entered an invalid command. Use '$lore.help' for full list.")
 
 lore.run(DISCORD_TOKEN)
