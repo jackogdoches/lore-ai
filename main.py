@@ -117,7 +117,7 @@ def generate(prompt, pageTitle, sectionNumber, querier, apiURL=API_URL):
 	appendedPrompt = "You are Lore, an AI wiki assistant for the Constructed Worlds Wiki. The user " + querier.name + " has asked you to edit a section of a page. Here is the current text content of that section: " + content + " (END PAGE CONTENT); The user has given you this prompt: " + prompt + " (END PROMPT); Your output should be  written in an encylopeadic, neutral-point of view style. REMEMBER TO FORMAT YOUR OUTPUT EXCLUSIVELY AS WIKITEXT MARKUP AS IT IS GETTING DIRECTLY POSTED ON A WIKI PAGE."
 	messages = [{"role": "system", "content": appendedPrompt}]
 	response = loreAI.chat.completions.create(
-		model='gpt-4-1106-preview',
+		model='gpt-4-turbo',
 		messages=messages,
 	)
 	chatCompletion = response.choices[0].message.content
@@ -184,12 +184,12 @@ def pageRead(pageTitle, query, querier, apiURL=API_URL):
 	messages = [{"role": "system", "content": appendedPrompt}]
 	if querier.privilege == True:
 		response = loreAI.chat.completions.create(
-			model='gpt-4-1106-preview',
+			model='gpt-4-turbo',
 			messages=messages,
 		)
 	else:
 		response = loreAI.chat.completions.create(
-			model='gpt-3.5-turbo-1106',
+			model='gpt-3.5-turbo',
 			messages=messages,
 		)
 	chatCompletion = response.choices[0].message.content
@@ -213,12 +213,12 @@ def sectionRead(pageTitle, sectionNumber, query, querier, apiURL=API_URL):
 	messages = [{"role": "system", "content": appendedPrompt}]
 	if querier.privilege == True:
 		response = loreAI.chat.completions.create(
-			model='gpt-4-1106-preview',
+			model='gpt-4-turbo',
 			messages=messages,
 		)
 	else:
 		response = loreAI.chat.completions.create(
-			model='gpt-3.5-turbo-1106',
+			model='gpt-3.5-turbo',
 			messages=messages,
 		)
 	chatCompletion = response.choices[0].message.content
@@ -227,17 +227,17 @@ def sectionRead(pageTitle, sectionNumber, query, querier, apiURL=API_URL):
 
 # CHAT COMPLETION
 def returnChat(query, querier):
-	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. The Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND ARE CO-LEADERS OF THE WIKI). The Administrators (sysops) of Conworlds are: T0oxi22, Andy Irons, and WorldMaker18. The following Discord user sent you a prompt: " + querier.name  + " ; Here is a Python dictionary entry containing your message history with " + querier.name + " up to this point: " + querier.readHistory() + " (END MESSAGE HISTORY); You have been given the following prompt to complete in STRICTLY EQUAL TO OR LESS THAN 1000 characters. Fulfil the request as literally as possible. Be concise with your answer but be very specific with details: " + query.prompt + " (END PROMPT)"
+	appended_prompt = "You are Lore, an AI wiki administration assistant for the Constructed Worlds Wiki. The wiki's technician, Fizzyflapjack, is your creator. The Constructed Worlds Wiki (commonly shortened as just Conworlds) is an independently-hosted worldbuilding, althistory, and general creative writing wiki. The Bureaucrats of Conworlds are: Centrist16 (real name Justin) and Fizzyflapjack (real name Jack) (BOTH BUREAUCRATS ARE EQUAL IN POWER AND ARE CO-LEADERS OF THE WIKI). The Administrators (sysops) of Conworlds are: T0oxi22, Andy Irons, and WorldMaker18. The following Discord user sent you a prompt: " + querier.name  + " ; Here is a Python dictionary entry containing your message history with " + querier.name + " up to this point: " + querier.readHistory() + " (END MESSAGE HISTORY); You have been given the following prompt to complete in STRICTLY EQUAL TO OR LESS THAN 1000 characters. Fulfil the request as literally as possible. Be specific with details: " + query.prompt + " (END PROMPT)"
 	messages = [{"role": "system", "content": appended_prompt}]
 	if querier.privilege == True:
 		response = loreAI.chat.completions.create(
-			model='gpt-4-1106-preview',
+			model='gpt-4-turbo',
 			messages=messages,
 			max_tokens=2000,
 		)
 	else:
 		response = loreAI.chat.completions.create(
-		model='gpt-3.5-turbo-1106',
+		model='gpt-3.5-turbo',
 		messages=messages,
 		max_tokens=2000,
 	)
